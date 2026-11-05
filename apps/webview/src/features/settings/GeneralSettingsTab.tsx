@@ -134,7 +134,6 @@ export function GeneralSettingsTab(input: GeneralSettingsTabProps): ReactElement
       <SettingCard ariaLabel={t('settings.extensionPreferences')}>
         <SettingRow
           title={t('settings.language.label')}
-          description={t('settings.language.hint')}
           control={
             <div className="dsh-settings__segment" role="group" aria-label={t('settings.language.label')}>
               {LOCALE_OPTIONS.map((option) => (
@@ -159,7 +158,6 @@ export function GeneralSettingsTab(input: GeneralSettingsTabProps): ReactElement
       <SettingCard ariaLabel={t('settings.appearance.label')}>
         <SettingRow
           title={t('settings.appearance.label')}
-          description={t('settings.appearance.hint')}
           control={
             <div className="dsh-settings__segment" role="group" aria-label={t('settings.appearance.label')}>
               {THEME_PREFERENCE_OPTIONS.map((option) => (
@@ -177,6 +175,15 @@ export function GeneralSettingsTab(input: GeneralSettingsTabProps): ReactElement
               ))}
             </div>
           }
+        />
+      </SettingCard>
+      <SettingCard
+        ariaLabel={t('settings.conversationAppearance')}
+        title={t('settings.conversationAppearance')}
+      >
+        <SettingRow
+          title={t('settings.conversationFontSize')}
+          control={renderFontSizeControl(props.conversationFontSize, props.onConversationFontSizeChange, t)}
         />
       </SettingCard>
       <SettingCard ariaLabel={t('settings.preferences')} title={t('settings.preferences')}>
@@ -267,16 +274,6 @@ export function GeneralSettingsTab(input: GeneralSettingsTabProps): ReactElement
             )}
           </>
         )}
-      </SettingCard>
-      <SettingCard
-        ariaLabel={t('settings.conversationAppearance')}
-        title={t('settings.conversationAppearance')}
-      >
-        <SettingRow
-          title={t('settings.conversationFontSize')}
-          description={t('settings.conversationFontSizeHint')}
-          control={renderFontSizeControl(props.conversationFontSize, props.onConversationFontSizeChange, t)}
-        />
       </SettingCard>
       <SettingCard ariaLabel={t('settings.keyboardShortcuts')}>
         <SettingRow

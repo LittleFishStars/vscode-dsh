@@ -112,6 +112,18 @@
   background: transparent;
 }
 
+/* Headerless cards do not need the extra spacing reserved below a heading. */
+#dsh-settings-panel-general > .dsh-setting-card > .dsh-setting-card__body:first-child {
+  padding-top: 0;
+}
+
+#dsh-settings-panel-general
+  > .dsh-setting-card
+  > .dsh-setting-card__body:first-child
+  > .dsh-setting-row:first-child {
+  padding-top: 0;
+}
+
 .dsh-app .dsh-settings .dsh-setting-row__layout {
   gap: 8px 12px;
 }
