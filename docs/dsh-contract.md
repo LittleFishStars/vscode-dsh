@@ -18,7 +18,7 @@
 
 `0.2.1-rc.5` 的固定源码是 [tag `dsh-v0.2.1-rc.5`](https://github.com/deepseek-ai/deepseek-harness/tree/dsh-v0.2.1-rc.5)，提交 `b830ec950faba0a46dda564be3e2d854afed94f1`。与 [rc.4](https://github.com/deepseek-ai/deepseek-harness/tree/504a01a9578abc2c6f1fb896b1dc322c9fe24f66) 对比，除包版本外的变更集中在 Web 思考内容展示及对应文档和测试，所消费的服务端协议源码未变；`rc215` 因此继承 `rc213` 的精确契约。Windows 上已用隔离配置验证连接、会话、设置和插件目录，范围见 [rc.5 适配检查](../reviews/dsh-rc215-adaptation-review.md)；此核对不代表所有 VS Code 交互与模型场景均已验收。
 
-`0.2.2-rc.1` 的固定来源是 [tag `dsh-v0.2.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/tree/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db)，本机 CLI 要求 Node.js 24.9 或更高。`session/control` 的增量从单个 `key/value` 改为同一事件序号下的 `changes: [{key, val}]`；`rc221` 先完整校验批次，再依原序投影为内部状态及 Inbox 队列，旧版本仍用原契约。历史图片读取改用完整引用；由于上游不再检查引用与 Session 的对应关系，扩展只使用 Host 从该 Session 实际观察到的引用，缓存有界并在 Session 移除时清理。Windows 隔离运行已检查启动、连接、会话创建和打开、空队列、会话标题实时更新、文本消息及图片发送与历史读取和端口释放；未使用真实账号，未验证实际模型回复。Schedule 改为宿主级任务契约，扩展暂不暴露旧 Schedule 接口。插件管理、其他新增功能和现场 VS Code 交互尚未完成全面验证，不能据精确版本身份声称全部兼容。
+`0.2.2-rc.1` 的固定来源是 [tag `dsh-v0.2.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/tree/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db)，本机 CLI 要求 Node.js 24.9 或更高。`session/control` 的增量从单个 `key/value` 改为同一事件序号下的 `changes: [{key, val}]`；`rc221` 先完整校验批次，再依原序投影为内部状态及 Inbox 队列，旧版本仍用原契约。历史图片读取改用完整引用；由于上游不再检查引用与 Session 的对应关系，扩展只使用 Host 从该 Session 实际观察到的引用，缓存有界并在 Session 移除时清理。插件目录和操作结果新增 `unsupported-platform` 状态，按平台不支持展示，原始诊断留在 Host。Windows 隔离运行已检查启动、连接、设置读写、插件目录、会话创建和打开、归档、空队列、会话标题实时更新、文本消息及图片发送与历史读取和端口释放；未使用真实账号，未验证实际模型回复。Schedule 改为宿主级任务契约，扩展暂不暴露旧 Schedule 接口。插件安装/更新、其他新增功能和现场 VS Code 交互尚未完成全面验证，不能据精确版本身份声称全部兼容。
 
 ## 版本身份与 wire 家族
 

@@ -1129,6 +1129,7 @@
   "plugins.manager.plugin.standalone": "Other plugin entries",
   "plugins.manager.change.uncertain": "The change could not be confirmed. The bundle list was refreshed.",
   "plugins.manager.failure.incompatible": "DSH cannot use this plugin with the current runtime version.",
+  "plugins.manager.failure.unsupportedPlatform": "This plugin does not support the current platform.",
   "plugins.manager.failure.protected": "DSH protects this plugin from the requested change.",
   "plugins.manager.failure.inUse": "Stop the DSH profile or remove dependent plugin entries before removing this bundle.",
   "plugins.manager.failure.staleApproval": "The install script approval is no longer current. Check the package and retry.",

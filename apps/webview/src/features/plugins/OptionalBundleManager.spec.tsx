@@ -157,6 +157,21 @@ function mountManager(resolve: (request: FeatureRequest) => unknown = defaultRes
   return { requests, render: mounted }
 }
 
+it('shows why a bundle is unavailable on the current platform', async () => {
+  mountManager((request) =>
+    request.type === 'plugin.bundles.list'
+      ? {
+          kind: 'plugin.bundles',
+          available: true,
+          bundles: [{ ...bundle, errorCode: 'unsupported-platform' }],
+          plugins: [],
+        }
+      : defaultResponse(request),
+  )
+  expect(await screen.findByText('This plugin does not support the current platform.')).toBeTruthy()
+  expect(screen.getByRole('button', { name: /Enable.*Review layer/ }).hasAttribute('disabled')).toBe(true)
+})
+
 function defaultResponse(request: FeatureRequest): unknown {
   if (request.type === 'plugin.bundles.list') return { kind: 'plugin.bundles', ...snapshot }
   if (request.type === 'plugin.registries.list')

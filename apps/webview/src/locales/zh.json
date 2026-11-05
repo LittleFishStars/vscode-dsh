@@ -1129,6 +1129,7 @@
   "plugins.manager.plugin.standalone": "其他插件条目",
   "plugins.manager.change.uncertain": "无法确认更改结果，已刷新扩展包列表。",
   "plugins.manager.failure.incompatible": "此插件与当前 DSH 运行版本不兼容。",
+  "plugins.manager.failure.unsupportedPlatform": "此插件不支持当前平台。",
   "plugins.manager.failure.protected": "DSH 保护此插件，无法执行所请求的更改。",
   "plugins.manager.failure.inUse": "请停止 DSH 配置或移除依赖的插件条目后再移除此扩展包。",
   "plugins.manager.failure.staleApproval": "安装脚本授权已过期。请检查软件包后重试。",

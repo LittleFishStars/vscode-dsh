@@ -1179,6 +1179,12 @@ describe('RC2 Plugin Manager feature protocol', () => {
     expect(
       featureResponseSchema.safeParse({
         ...response,
+        payload: { ...response.payload, bundles: [{ ...bundle, errorCode: 'unsupported-platform' }] },
+      }).success,
+    ).toBe(true)
+    expect(
+      featureResponseSchema.safeParse({
+        ...response,
         payload: {
           ...response.payload,
           bundles: [{ ...bundle, meta: { icon: 'https://invalid', error: 'private diagnostic' } }],
