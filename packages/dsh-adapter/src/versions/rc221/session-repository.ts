@@ -70,7 +70,7 @@ export class Rc221SessionRepository extends Alpha212SessionRepository {
   }
 
   private rememberEventImages(event: BackendEvent): void {
-    let images: readonly MessageImageReference[] = []
+    let images: readonly MessageImageReference[]
     if (event.type === 'message.user' || event.type === 'message.completed') images = event.images ?? []
     else if (event.type === 'tool.updated') images = event.tool.images ?? []
     else if (event.type === 'queue.updated') images = event.items.flatMap((item) => item.images ?? [])

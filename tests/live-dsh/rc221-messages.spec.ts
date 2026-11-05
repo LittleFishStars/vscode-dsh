@@ -39,17 +39,13 @@ describe.skipIf(process.env.DSH_LIVE_SMOKE !== '1' || process.env.DSH_LIVE_RUNTI
           await vi.waitFor(
             async () => {
               const history = await backend.sessions.history(session.id)
-              expect(history.events).toEqual(
-                expect.arrayContaining([
-                  expect.objectContaining({
-                    event: expect.objectContaining({
-                      type: 'message.user',
-                      sessionId: session.id,
-                      rpcId: 'fixture-request',
-                      markdown: 'fixture prompt',
-                    }),
-                  }),
-                ]),
+              expect(history.events.map((row) => row.event)).toContainEqual(
+                expect.objectContaining({
+                  type: 'message.user',
+                  sessionId: session.id,
+                  rpcId: 'fixture-request',
+                  markdown: 'fixture prompt',
+                }),
               )
             },
             { timeout: 10_000 },

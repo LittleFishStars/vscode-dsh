@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { BackendEndpoint } from '@dsh-vscode/domain'
+import type { BackendEndpoint, ScheduleRepository } from '@dsh-vscode/domain'
 import { Rc221VersionAdapter } from '../src/versions/rc221/adapter.js'
 import { normalizeRc221ControlFrame } from '../src/versions/rc221/session-control.js'
-import type { AlphaLoopbackApiClient } from '../src/versions/alpha/transport.js'
+import type {
+  AlphaLoopbackApiClient,
+  AlphaLoopbackApiClientOptions,
+} from '../src/versions/alpha/transport.js'
 import { normalizeAlpha171ControlFrame } from '../src/versions/alpha171/session-control.js'
 import { transportOptions } from './support/contract-harness.js'
 
@@ -85,10 +88,10 @@ describe('DSH 0.2.2-rc.1 Session control', () => {
 
   it('selects the new control wire and withholds the changed Schedule port', () => {
     class InspectableAdapter extends Rc221VersionAdapter {
-      public transportProfile(endpoint: BackendEndpoint) {
+      public transportProfile(endpoint: BackendEndpoint): AlphaLoopbackApiClientOptions {
         return this.createTransportOptions(endpoint)
       }
-      public schedule() {
+      public schedule(): ScheduleRepository | undefined {
         return this.createScheduleRepository({} as AlphaLoopbackApiClient)
       }
     }

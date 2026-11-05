@@ -148,7 +148,10 @@ function chooseTiming(timing: string): void {
 }
 
 describe('SchedulePanel', () => {
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
 
   it.each([
     { timing: 'after', selector: 'after_seconds', value: 300 },
@@ -608,6 +611,8 @@ describe('SchedulePanel', () => {
   })
 
   it('resolves an absolute DST overlap to the earlier instant used by RC2', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-01T00:00:00.000Z'))
     let items: readonly ScheduleCatalogEntry[] = [active]
     const panel = mountPanel({
       resolve: (request) =>

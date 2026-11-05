@@ -67,7 +67,9 @@ export class Rc172VersionAdapter extends Rc171VersionAdapter {
     return new Rc172SessionRepository(transport, workspaces, this.options.samePath, options)
   }
 
-  protected override createScheduleRepository(transport: AlphaLoopbackApiClient): ScheduleRepository {
+  protected override createScheduleRepository(
+    transport: AlphaLoopbackApiClient,
+  ): ScheduleRepository | undefined {
     return new Rc172ScheduleRepository(transport)
   }
 

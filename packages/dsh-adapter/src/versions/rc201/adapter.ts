@@ -21,7 +21,9 @@ export class Rc201VersionAdapter extends Rc172VersionAdapter {
     fallback: false,
   }
 
-  protected override createScheduleRepository(transport: AlphaLoopbackApiClient): ScheduleRepository {
+  protected override createScheduleRepository(
+    transport: AlphaLoopbackApiClient,
+  ): ScheduleRepository | undefined {
     return new Rc201ScheduleRepository(transport)
   }
 

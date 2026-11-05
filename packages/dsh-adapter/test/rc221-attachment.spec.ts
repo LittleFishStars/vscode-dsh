@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
 import type { BackendEvent } from '@dsh-vscode/domain'
 import type { DshTransport } from '../src/contracts.js'
 import type { Rc6WorkspaceRepository } from '../src/repositories/workspace-repository.js'
@@ -49,7 +49,10 @@ const liveEvents: readonly BackendEvent[] = [
   },
 ]
 
-function fixture() {
+function fixture(): {
+  readonly repository: Rc221SessionRepository
+  readonly request: Mock<(method: string) => Promise<unknown>>
+} {
   const request = vi.fn((method: string) =>
     Promise.resolve({
       result: {
