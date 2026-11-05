@@ -1,10 +1,68 @@
 import { describe, expect, it } from 'vitest'
 import path from 'node:path'
 import { rc6Mapper } from '@dsh-vscode/dsh-adapter'
+import { transcriptNodeSchema } from '@dsh-vscode/webview-protocol'
 
 import { publicWorkspaceRelativePath, publicWorkspaceSummary, sanitizePublicValue } from './public-value.js'
 
 describe('public Webview value projection', () => {
+  it('classifies a DSH sandbox grant failure for live events and history without exposing its diagnostic', () => {
+    const privatePath = 'C:\\Users\\private-user\\project'
+    const diagnostic = `Error: SetNamedSecurityInfoW failed (Win32 5): grantWrite(${privatePath})`
+    const event = rc6Mapper.event('tool/result', {
+      sessionId: 'session-1',
+      data: {
+        callId: 'call-1',
+        message: { isError: true, content: [{ type: 'text', text: diagnostic }] },
+      },
+    })
+    if (event.type !== 'tool.updated') throw new Error('Expected tool result')
+    expect(event.tool.failureKind).toBe('windows-sandbox-access-denied')
+    const tool = {
+      ...event.tool,
+      metadata: { diagnostic },
+      presentation: { phase: 'result', card: 'generic', content: [diagnostic] },
+    }
+    const live = sanitizePublicValue({ ...event, tool }) as { tool: Record<string, unknown> }
+    const history = sanitizePublicValue({ kind: 'tool', id: 'call-1', tool })
+    expect(live.tool).toMatchObject({
+      status: 'failed',
+      failureKind: 'windows-sandbox-access-denied',
+      outputSummary: '',
+      metadata: {},
+    })
+    expect(live.tool).not.toHaveProperty('error')
+    expect(live.tool).not.toHaveProperty('presentation')
+    expect(JSON.stringify([live, history])).not.toContain(privatePath)
+    expect(JSON.stringify([live, history])).not.toContain('SetNamedSecurityInfoW')
+    expect(transcriptNodeSchema.safeParse(history).success).toBe(true)
+  })
+
+  it('leaves successful output and unrelated failures unchanged', () => {
+    const diagnostic = 'SetNamedSecurityInfoW failed (Win32 5): grantWrite(C:\\fixture)'
+    const base = { id: 'call', name: 'dynamic', category: 'tool', title: 'Tool', metadata: {} }
+    for (const tool of [
+      { ...base, status: 'completed', outputSummary: diagnostic },
+      { ...base, status: 'failed', error: 'SetNamedSecurityInfoW failed (Win32 6): grantWrite(C:\\fixture)' },
+      { ...base, status: 'failed', error: 'Another failure: ' + diagnostic },
+      { ...base, status: 'cancelled', error: diagnostic },
+    ]) {
+      expect(sanitizePublicValue(tool)).toEqual(tool)
+    }
+    for (const [text, isError] of [
+      [diagnostic, false],
+      ['SetNamedSecurityInfoW failed (Win32 6): grantWrite(C:\\fixture)', true],
+      ['Another failure: ' + diagnostic, true],
+    ] as const) {
+      const event = rc6Mapper.event('tool/result', {
+        sessionId: 'session-1',
+        data: { callId: 'call', message: { isError, content: [{ type: 'text', text }] } },
+      })
+      if (event.type !== 'tool.updated') throw new Error('Expected tool result')
+      expect(event.tool.failureKind).toBeUndefined()
+    }
+  })
+
   it('projects operation-time paths within owned roots and hides directory projections and install targets', () => {
     const root = path.resolve('fixture-project')
     const operationPath = path.join(root, 'next', 'file.ts')

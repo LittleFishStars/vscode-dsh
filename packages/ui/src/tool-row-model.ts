@@ -4,6 +4,7 @@ import {
   decodeToolValue,
   formatToolText,
   toolNameLabel,
+  toolFailureText,
   toolPresentation,
   type PresentationTranslate,
   type ToolDetailBlock,
@@ -119,11 +120,12 @@ export function toolRowModel(tool: ToolCallView, translate?: PresentationTransla
       : variant === 'skill'
         ? skillSections(tool, translate)
         : [...presentation.request, ...presentation.response]
-  const visibleSections = removeDuplicateErrorSections(sections, tool.error, translate)
+  const failure = toolFailureText(tool, translate)
+  const visibleSections = removeDuplicateErrorSections(sections, failure, translate)
   // A failing exit is stated by the card's own status pill; the row must not
   // echo the bare exit number as if it were the failure text.
   const errorText =
-    tool.error ??
+    failure ??
     (state === 'error' && !terminalPresentationFailed(tool.presentation)
       ? sections[sections.length - 1]?.content
       : undefined)

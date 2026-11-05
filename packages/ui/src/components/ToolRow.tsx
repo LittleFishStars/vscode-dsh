@@ -6,7 +6,7 @@ import {
   type ToolPresentationView,
 } from '@dsh-vscode/domain'
 
-import { formatToolText, type PresentationTranslate } from '../tool-presentation.js'
+import { formatToolText, toolFailureText, type PresentationTranslate } from '../tool-presentation.js'
 import { toolStatusLabel } from '../tool-status.js'
 import {
   renderStructuredDetails,
@@ -61,8 +61,9 @@ export function ToolRow(props: ToolRowProps): ReactElement {
   const expanded = props.expanded ?? localExpanded
   const onToggle = props.onToggle ?? (() => setLocalExpanded((current) => !current))
   const model = toolRowModel(props.tool, props.translate)
+  const failure = toolFailureText(props.tool, props.translate)
   const hasDetails =
-    model.sections.length > 0 || props.tool.error !== undefined || model.autoReviewOutput !== undefined
+    model.sections.length > 0 || failure !== undefined || model.autoReviewOutput !== undefined
   const status =
     props.tool.preparation !== undefined
       ? label(props.translate, 'toolrow.preparing', 'Preparing arguments')
@@ -88,7 +89,7 @@ export function ToolRow(props: ToolRowProps): ReactElement {
       : presentationTargets(props.tool.presentation, props.renderWeb !== undefined, props.tool.locations)
   const detailsPresentation = removeDuplicateErrorPresentation(
     props.tool.presentation,
-    props.tool.error,
+    failure,
     props.translate,
   )
   const inlineTarget =
@@ -220,12 +221,10 @@ export function ToolRow(props: ToolRowProps): ReactElement {
                     ))}
                   </div>
                 )}
-                {props.tool.error === undefined ? null : (
+                {failure === undefined ? null : (
                   <section className="dsh-tool-row__section dsh-tool-row__section--error" role="alert">
                     <h4>{label(props.translate, 'toolrow.error', 'Error')}</h4>
-                    <pre tabIndex={0}>
-                      {formatToolText(props.tool.error, props.translate) ?? props.tool.error.trim()}
-                    </pre>
+                    <pre tabIndex={0}>{formatToolText(failure, props.translate) ?? failure.trim()}</pre>
                   </section>
                 )}
               </>

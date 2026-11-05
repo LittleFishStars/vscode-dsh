@@ -176,6 +176,8 @@ export interface ToolCallView {
   readonly inputSummary?: string
   readonly outputSummary?: string
   readonly error?: string
+  /** Classified sandbox setup failure; never contains the original diagnostic. */
+  readonly failureKind?: 'windows-sandbox-access-denied'
   /** Structured Auto Review denial; absent for every ordinary tool failure. */
   readonly autoReviewDenial?: ToolAutoReviewDenialView
   /** Host-safe file locations emitted by mutation tool cards. */

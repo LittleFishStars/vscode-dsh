@@ -199,7 +199,7 @@ function assistantBlockSignature(blocks: readonly AssistantContentBlock[]): stri
 function toolNodeSignature(node: ToolTimelineNode): string {
   const tool = node.tool
   const presentation = tool.presentation
-  return `${node.id}:${tool.preparation?.attemptId ?? ''}:${tool.preparation?.updateIndex ?? ''}:${tool.images?.map((image) => image.attachmentId).join('|') ?? ''}:${tool.status}:${tool.inputSummary?.length ?? 0}:${tool.outputSummary?.length ?? 0}:${tool.error?.length ?? 0}:${tool.locations?.map((location) => `${location.path}:${location.line ?? ''}`).join('|') ?? ''}:${presentation?.phase ?? ''}:${presentation?.card ?? ''}`
+  return `${node.id}:${tool.preparation?.attemptId ?? ''}:${tool.preparation?.updateIndex ?? ''}:${tool.images?.map((image) => image.attachmentId).join('|') ?? ''}:${tool.status}:${tool.inputSummary?.length ?? 0}:${tool.outputSummary?.length ?? 0}:${tool.error?.length ?? 0}:${tool.failureKind ?? ''}:${tool.locations?.map((location) => `${location.path}:${location.line ?? ''}`).join('|') ?? ''}:${presentation?.phase ?? ''}:${presentation?.card ?? ''}`
 }
 
 const formattedEventPayloadCache = new WeakMap<object, string>()

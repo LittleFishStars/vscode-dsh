@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import path from 'node:path'
+import { rc6Mapper } from '@dsh-vscode/dsh-adapter'
 import type { BackendEvent, SessionDetail, SessionHistoryEvent, SessionHistoryPage } from '@dsh-vscode/domain'
 import {
   TRANSCRIPT_MAX_CHARS,
@@ -98,6 +99,36 @@ function fixture(
 afterEach(() => vi.useRealTimers())
 
 describe('Host transcript windows', () => {
+  it('retains sandbox guidance and hides its diagnostic when tool history is clipped', () => {
+    const privatePath = 'C:\\Users\\private-user\\project'
+    const diagnostic = `SetNamedSecurityInfoW failed (Win32 5): grantWrite(${privatePath})\n${'stack '.repeat(3000)}`
+    const result = rc6Mapper.event('tool/result', {
+      sessionId,
+      data: { callId: 'call', message: { isError: true, content: [{ type: 'text', text: diagnostic }] } },
+    })
+    if (result.type !== 'tool.updated') throw new Error('Expected tool result')
+    const call: BackendEvent = {
+      type: 'tool.updated',
+      sessionId,
+      tool: {
+        id: 'call',
+        name: 'pwsh',
+        category: 'execution',
+        title: 'Task '.repeat(1000),
+        status: 'running',
+        inputSummary: 'Command '.repeat(3000),
+        metadata: { description: 'Details '.repeat(3000) },
+      },
+    }
+    const client = fixture()
+    const window = client.open([row(1, call), row(2, result)])
+    const node = window.nodes.find((entry) => entry.kind === 'tool')
+    expect(node).toMatchObject({ tool: { status: 'failed', failureKind: 'windows-sandbox-access-denied' } })
+    expect(JSON.stringify(window)).not.toContain(privatePath)
+    expect(JSON.stringify(window)).not.toContain('SetNamedSecurityInfoW')
+    client.service.dispose()
+  })
+
   it('retires an in-flight live publication baseline when a history batch is delivered', async () => {
     let finish!: (value: boolean) => void
     const posted: TranscriptWindow[] = []

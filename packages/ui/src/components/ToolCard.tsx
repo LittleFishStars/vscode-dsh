@@ -1,6 +1,11 @@
 import type { ReactElement } from 'react'
 import type { ToolCallView, ToolLocationView } from '@dsh-vscode/domain'
-import { formatToolText, toolPresentation, type PresentationTranslate } from '../tool-presentation.js'
+import {
+  formatToolText,
+  toolFailureText,
+  toolPresentation,
+  type PresentationTranslate,
+} from '../tool-presentation.js'
 import { toolStatusLabel } from '../tool-status.js'
 import { ToolRow } from './ToolRow.js'
 
@@ -18,16 +23,14 @@ export function ToolCard(props: ToolCardProps): ReactElement {
   if (props.tool.preparation !== undefined) return <ToolRow {...props} />
   const presentation = toolPresentation(props.tool, props.translate)
   const request = presentation.request
+  const failure = toolFailureText(props.tool, props.translate)
   const errorText =
-    props.tool.error === undefined
-      ? undefined
-      : (formatToolText(props.tool.error, props.translate) ?? props.tool.error.trim())
+    failure === undefined ? undefined : (formatToolText(failure, props.translate) ?? failure.trim())
   const response = presentation.response.filter(
     (block) => errorText === undefined || block.content.trim() !== errorText.trim(),
   )
   const targets = props.onOpenLink === undefined ? [] : toolLocationTargets(props.tool.locations)
-  const hasDetails =
-    request.length > 0 || response.length > 0 || targets.length > 0 || props.tool.error !== undefined
+  const hasDetails = request.length > 0 || response.length > 0 || targets.length > 0 || failure !== undefined
   const expandTitle =
     props.translate === undefined ? 'Expand tool details' : props.translate('toolcard.expandTitle')
   const collapseTitle =
@@ -128,7 +131,7 @@ export function ToolCard(props: ToolCardProps): ReactElement {
               ))}
             </div>
           )}
-          {props.tool.error === undefined ? null : (
+          {failure === undefined ? null : (
             <section className="dsh-tool-card__section dsh-tool-card__section--error" role="alert">
               <h4>{errorLabel}</h4>
               <p tabIndex={0}>{errorText}</p>

@@ -52,6 +52,7 @@
   "timeline.focused.preparing": "正在生成工具参数…",
   "timeline.focused.tools": "{count} 次工具调用",
   "timeline.focused.failedTools": "{count} 次工具调用失败",
+  "tool.sandbox.windowsAccessDenied": "Windows 沙箱无法设置文件夹权限，命令尚未执行。请检查工作区和临时目录的文件权限；若无权更改，请联系管理员或目录所有者。",
   "timeline.focused.toolPages": "工具调用分页",
   "timeline.focused.previous": "上一页",
   "timeline.focused.next": "下一页",

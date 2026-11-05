@@ -52,6 +52,7 @@
   "timeline.focused.preparing": "Preparing tool arguments…",
   "timeline.focused.tools": "Tool calls: {count}",
   "timeline.focused.failedTools": "Failed tool calls: {count}",
+  "tool.sandbox.windowsAccessDenied": "The Windows sandbox could not set folder permissions, so the command was not run. Check the workspace and temporary folder permissions; if you cannot change them, contact an administrator or the folder owner.",
   "timeline.focused.toolPages": "Tool call pages",
   "timeline.focused.previous": "Previous",
   "timeline.focused.next": "Next",

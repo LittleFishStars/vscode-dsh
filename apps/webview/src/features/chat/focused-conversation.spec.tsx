@@ -439,6 +439,37 @@ describe('focused conversation interactions', () => {
     expect(screen.queryByText('Tool calls: 1')).toBeNull()
   })
 
+  it('shows localized sandbox guidance in the failure summary and expanded tool details', () => {
+    const tool = {
+      kind: 'tool' as const,
+      id: 'sandbox',
+      tool: {
+        id: 'sandbox',
+        name: 'pwsh',
+        title: 'Pwsh',
+        category: 'execution',
+        status: 'failed' as const,
+        failureKind: 'windows-sandbox-access-denied' as const,
+        metadata: {},
+      },
+    }
+    const translate = (key: string): string =>
+      key === 'tool.sandbox.windowsAccessDenied' ? 'Sandbox permission guidance' : key
+    const view = render(
+      <ConversationLayoutProvider>
+        <FocusedToolActivity
+          tools={[tool]}
+          expanded={new Set(['focused-tools:sandbox', 'sandbox'])}
+          onExpandedChange={() => undefined}
+          translate={translate}
+          transcriptView="standard"
+        />
+      </ConversationLayoutProvider>,
+    )
+    expect(screen.getAllByText('Sandbox permission guidance').length).toBeGreaterThan(1)
+    expect(view.container.textContent).not.toContain('SetNamedSecurityInfoW')
+  })
+
   it('limits mounted details to one tool page and makes every call reachable', () => {
     const tools = Array.from({ length: 55 }, (_, index) => ({
       kind: 'tool' as const,

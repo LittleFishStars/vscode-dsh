@@ -18,6 +18,17 @@ export interface ToolPresentation {
   readonly response: readonly ToolDetailBlock[]
 }
 
+/** Describe known Host-classified setup failures without exposing raw diagnostics. */
+export function toolFailureText(tool: ToolCallView, t?: PresentationTranslate): string | undefined {
+  if (tool.status === 'failed' && tool.failureKind === 'windows-sandbox-access-denied')
+    return localize(
+      t,
+      'tool.sandbox.windowsAccessDenied',
+      'The Windows sandbox could not set folder permissions, so the command was not run. Check the workspace and temporary folder permissions; if you cannot change them, contact an administrator or the folder owner.',
+    )
+  return tool.error
+}
+
 /**
  * Decode JSON plus the Python/Node-style object representations emitted by
  * older tool bridges. This is a bounded, non-executable parser: tool output

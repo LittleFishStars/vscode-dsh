@@ -1484,6 +1484,7 @@ function preview(value: TimelineNode, budget: number): { value: TimelineNode; om
           inputSummary: value.tool.inputSummary?.slice(0, 2048) ?? '',
           outputSummary: value.tool.outputSummary?.slice(0, 2048) ?? '',
           ...(value.tool.error === undefined ? {} : { error: value.tool.error.slice(0, 1024) }),
+          ...(value.tool.failureKind === undefined ? {} : { failureKind: value.tool.failureKind }),
           ...(value.tool.autoReviewDenial === undefined
             ? {}
             : {

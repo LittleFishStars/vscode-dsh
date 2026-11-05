@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type ReactElement } from 'react'
-import { toolNameLabel } from '@dsh-vscode/ui'
+import { toolFailureText, toolNameLabel } from '@dsh-vscode/ui'
 import { terminalPresentationFailed } from '@dsh-vscode/domain'
 import { Icon } from '../../ui/Icon.js'
 import { ToolCallCollection, type ToolCallCollectionProps } from './ToolCallCollection.js'
@@ -54,6 +54,7 @@ export function FocusedToolActivity(
       terminalPresentationFailed(node.tool.presentation),
   )
   const preparing = latest?.tool.preparation !== undefined
+  const firstFailure = failed[0] === undefined ? undefined : toolFailureText(failed[0].tool, props.translate)
   const names = [...new Set(executed.map((node) => toolNameLabel(node.tool.name, props.translate)))]
     .slice(0, 3)
     .join(' · ')
@@ -99,7 +100,7 @@ export function FocusedToolActivity(
         <p className="dsh-focused-tools__failure" role="status">
           <Icon name="alert" />
           {props.translate('timeline.focused.failedTools', { count: failed.length })}
-          {failed[0]?.tool.error === undefined ? null : <span>{failed[0].tool.error}</span>}
+          {firstFailure === undefined ? null : <span>{firstFailure}</span>}
         </p>
       )}
       <div id={bodyId} hidden={!visible} className="dsh-focused-tools__body">

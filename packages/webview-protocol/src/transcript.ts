@@ -150,6 +150,7 @@ const tool = z
     inputSummary: opt,
     outputSummary: opt,
     error: opt,
+    failureKind: z.literal('windows-sandbox-access-denied').optional(),
     images,
     submittedPlan: z.object({ title: text, markdown: text }).strict().optional(),
     preparation: z

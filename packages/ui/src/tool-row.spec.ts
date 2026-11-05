@@ -81,6 +81,22 @@ describe('ToolRow', () => {
     })
   })
 
+  it('renders a localized sandbox setup failure in the specialized tool summary', () => {
+    const translate = (key: string): string =>
+      key === 'tool.sandbox.windowsAccessDenied' ? 'Sandbox permission guidance' : key
+    const model = toolRowModel(
+      tool({ name: 'pwsh', status: 'failed', failureKind: 'windows-sandbox-access-denied' }),
+      translate,
+    )
+    expect(model).toMatchObject({ state: 'error', errorSummary: 'Sandbox permission guidance' })
+    const completed = toolRowModel(
+      tool({ name: 'pwsh', status: 'completed', failureKind: 'windows-sandbox-access-denied' }),
+      translate,
+    )
+    expect(completed.state).toBe('ok')
+    expect(completed.errorSummary).toBeUndefined()
+  })
+
   it('uses safe localized fallback copy when an Auto review denial has no displayable reason', () => {
     const model = toolRowModel(
       tool({ status: 'failed', autoReviewDenial: { reason: ' \n ' }, error: 'raw error should stay hidden' }),

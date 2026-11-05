@@ -113,6 +113,9 @@ export function tool(
     category: category ?? 'tool',
     title: title ?? 'Tool',
     status,
+    ...(phase === 'result' && status === 'failed' && isWindowsSandboxAccessDenied(errorText)
+      ? { failureKind: 'windows-sandbox-access-denied' as const }
+      : {}),
     ...(value.startedAt === undefined ? {} : { startedAt: date(value.startedAt) }),
     ...(value.completedAt === undefined ? {} : { completedAt: date(value.completedAt) }),
     ...(input === undefined ? {} : { inputSummary: fullText(input) }),
@@ -123,6 +126,16 @@ export function tool(
     ...(presentation === undefined ? {} : { presentation }),
     metadata: objectOrUndefined(safePayload(view)) ?? {},
   }
+}
+
+/** Recognize the exact DSH Windows sandbox initialization error, not arbitrary output. */
+function isWindowsSandboxAccessDenied(error: string | undefined): boolean {
+  return (
+    error !== undefined &&
+    /^(?:(?:Error|Win32Error): )?SetNamedSecurityInfoW failed \(Win32 5\): grantWrite\([^\r\n]*\)(?:\r?\n[\s\S]*)?$/u.test(
+      error.trim(),
+    )
+  )
 }
 
 /**

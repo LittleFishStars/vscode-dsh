@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { TimelineNode } from '@dsh-vscode/timeline'
+import { ToolCard } from '@dsh-vscode/ui'
 
 import { ToolCallCollection } from './ToolCallCollection.js'
 import { ConversationLayoutProvider } from '../../app/ConversationLayoutProvider.js'
@@ -43,6 +44,24 @@ function toolNode(
 
 describe('ToolCallCollection', () => {
   afterEach(() => cleanup())
+
+  it('shows sandbox guidance for an expanded generic tool', () => {
+    const tool = {
+      ...toolNode('third-party', undefined, 'failed').tool,
+      failureKind: 'windows-sandbox-access-denied' as const,
+    }
+    render(
+      <ToolCard
+        tool={tool}
+        expanded
+        onToggle={() => undefined}
+        translate={(key) =>
+          key === 'tool.sandbox.windowsAccessDenied' ? 'Sandbox permission guidance' : key
+        }
+      />,
+    )
+    expect(screen.getByText('Sandbox permission guidance')).toBeTruthy()
+  })
 
   it('opens a focused web target without toggling its independently controlled details', () => {
     const open = vi.fn()

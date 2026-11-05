@@ -78,10 +78,15 @@ export function sanitizePublicValue(
   const source = value as Record<string, unknown>
   const editorTool = publicEditorCompanionTool(source)
   if (editorTool !== undefined) return editorTool
+  const publicSource = publicWindowsSandboxFailure(source) ?? source
   const result: Record<string, unknown> = {}
-  for (const [key, entry] of Object.entries(source)) {
-    if (isSensitivePublicField(parentKey, key, entry, source)) continue
-    if (source.type === 'session.projection' && source.key === 'workingDirectory' && key === 'value') {
+  for (const [key, entry] of Object.entries(publicSource)) {
+    if (isSensitivePublicField(parentKey, key, entry, publicSource)) continue
+    if (
+      publicSource.type === 'session.projection' &&
+      publicSource.key === 'workingDirectory' &&
+      key === 'value'
+    ) {
       result[key] = null
       continue
     }
@@ -97,6 +102,27 @@ export function sanitizePublicValue(
     result[key] = sanitizePublicValue(entry, key, roots, sessionCwd)
   }
   return result
+}
+
+/**
+ * DSH fails closed before spawning the command when its Windows sandbox cannot
+ * grant a writable directory. The adapter classifies the structured failure
+ * before transcript clipping; keep the original diagnostic on the Host side.
+ */
+function publicWindowsSandboxFailure(source: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (
+    source.status !== 'failed' ||
+    typeof source.id !== 'string' ||
+    typeof source.name !== 'string' ||
+    source.failureKind !== 'windows-sandbox-access-denied'
+  )
+    return undefined
+  const { error, outputSummary, presentation, metadata, ...publicTool } = source
+  void error
+  void outputSummary
+  void presentation
+  void metadata
+  return { ...publicTool, outputSummary: '', metadata: {} }
 }
 
 function isSensitivePublicField(
