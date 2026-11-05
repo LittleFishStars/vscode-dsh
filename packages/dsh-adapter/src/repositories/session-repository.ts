@@ -591,7 +591,12 @@ export class Rc6SessionRepository implements SessionRepository {
     signal?: AbortSignal,
   ): Promise<PromptAttachment> {
     const value = recordOrUndefined(
-      await callRpc<unknown>(this.transport, 'session.attachment', { sessionId, attachmentId }, signal),
+      await callRpc<unknown>(
+        this.transport,
+        'session.attachment',
+        this.attachmentRequest(sessionId, attachmentId),
+        signal,
+      ),
     )
     const reference = asRecord(value?.attachment)
     const rawData = typeof value?.data === 'string' ? value.data : ''
@@ -636,6 +641,11 @@ export class Rc6SessionRepository implements SessionRepository {
       name: safeAttachmentName(typeof reference.name === 'string' ? reference.name : attachmentId),
       mimeType: resolvedMediaType,
     }
+  }
+
+  /** Version-specific wire payload for a historical image read. */
+  protected attachmentRequest(sessionId: string, attachmentId: string): Readonly<Record<string, unknown>> {
+    return { sessionId, attachmentId }
   }
 
   public async setArchived(sessionId: string, archived: boolean, signal?: AbortSignal): Promise<void> {
