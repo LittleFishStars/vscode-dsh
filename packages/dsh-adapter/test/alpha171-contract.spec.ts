@@ -10,6 +10,7 @@ import { Alpha171VersionAdapter } from '../src/versions/alpha171/adapter.js'
 import { normalizeAlpha171ControlFrame } from '../src/versions/alpha171/session-control.js'
 import { Alpha172VersionAdapter } from '../src/versions/alpha172/adapter.js'
 import { Rc171VersionAdapter } from '../src/versions/rc171/adapter.js'
+import { Rc221VersionAdapter } from '../src/versions/rc221/adapter.js'
 import type { AlphaLoopbackApiClient, AlphaWebSocket } from '../src/versions/alpha/transport.js'
 import { callRpc, unwrapRpcResultValue } from '../src/versions/rc6/rpc.js'
 import { rc6Mapper } from '../src/versions/rc6/mapper.js'
@@ -386,6 +387,47 @@ describe('DSH 0.1.7-alpha.1 contract', () => {
       value: { type: 'session/projection-baseline', projections: {} },
     })
     await transport.close()
+  })
+
+  it('delivers 0.2.2 batched control projections through the real transport', async () => {
+    FakeWebSocket.instances.length = 0
+    const transport = new Rc221VersionAdapter(adapterOptions).createTransport(
+      endpoint,
+    ) as AlphaLoopbackApiClient
+    const iterator = transport.openHostStream(new AbortController().signal)[Symbol.asyncIterator]()
+    try {
+      const first = iterator.next()
+      const socket = await waitForSocket()
+      socket.open()
+      await waitForSent(socket, 1)
+      socket.message(streamItem(socket, { type: 'baseline', value: { projections: {} } }))
+      await expect(first).resolves.toMatchObject({ value: { type: 'session/projection-baseline' } })
+
+      const next = iterator.next()
+      const queued = inboxMessage('message-1', 'fixture', { kind: 'user', rpcId: 'request-1' })
+      socket.message(
+        streamItem(socket, {
+          type: 'projection',
+          sessionId: 's-1',
+          seq: 13,
+          changes: [
+            { key: 'inbox', val: inboxValue([queued]) },
+            { key: 'title', val: 'Updated' },
+          ],
+        }),
+      )
+      await expect(next).resolves.toMatchObject({
+        value: { type: 'session/queue', sessionId: 's-1', asOfSequence: 13, items: [{ rpcId: 'request-1' }] },
+      })
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { type: 'session/projection', key: 'inbox', seq: 13 },
+      })
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { type: 'session/projection', key: 'title', seq: 13 },
+      })
+    } finally {
+      await transport.close()
+    }
   })
 
   it('rejects additive fields on the projection baseline', async () => {

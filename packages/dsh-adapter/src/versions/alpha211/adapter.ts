@@ -42,7 +42,9 @@ export class Alpha211VersionAdapter extends Rc202VersionAdapter {
     return new Alpha211SubagentRepository(transport, options)
   }
 
-  protected override createScheduleRepository(transport: AlphaLoopbackApiClient): ScheduleRepository {
+  protected override createScheduleRepository(
+    transport: AlphaLoopbackApiClient,
+  ): ScheduleRepository | undefined {
     return new Alpha211ScheduleRepository(transport)
   }
 

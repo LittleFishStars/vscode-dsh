@@ -8,6 +8,7 @@ import {
   Rc212VersionAdapter,
   Rc213VersionAdapter,
   Rc215VersionAdapter,
+  Rc221VersionAdapter,
 } from '../src/index.js'
 import { candidate, transportOptions } from './support/contract-harness.js'
 import type { DshTransport } from '../src/contracts.js'
@@ -21,6 +22,7 @@ import { ProbeFixtureTransport } from './support/probe-fixture.js'
 // rc.2    687f282e8625c6b8d11ff58211a90524be2e4317,
 // rc.3    1f81c047fc48fa190a683e469daa699857e9afe8 (client UI / model listing only),
 // rc.5    b830ec950faba0a46dda564be3e2d854afed94f1 (rc.4 wire plus Web reasoning UI).
+// 0.2.2-rc.1 66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db (batched control projections).
 const releases = [
   [Alpha213VersionAdapter, '0.2.1-alpha.3', 'alpha213'],
   [Alpha214VersionAdapter, '0.2.1-alpha.4', 'alpha214'],
@@ -29,6 +31,7 @@ const releases = [
   [Rc212VersionAdapter, '0.2.1-rc.2', 'rc212'],
   [Rc213VersionAdapter, '0.2.1-rc.3', 'rc213'],
   [Rc215VersionAdapter, '0.2.1-rc.5', 'rc215'],
+  [Rc221VersionAdapter, '0.2.2-rc.1', 'rc221'],
 ] as const
 
 describe('0.2.1 published release admission', () => {

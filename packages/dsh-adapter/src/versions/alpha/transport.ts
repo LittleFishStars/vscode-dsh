@@ -18,6 +18,7 @@ import { unwrapRpcResultValue } from '../rc6/rpc.js'
 import { Alpha13AssistantStreamProjector, type Alpha13ProjectorOutput } from '../alpha13/session-wire.js'
 import { normalizeAlpha162ControlFrame } from '../alpha162/session-control.js'
 import { normalizeAlpha171ControlFrame } from '../alpha171/session-control.js'
+import { normalizeRc221ControlFrame } from '../rc221/session-control.js'
 import { createAlphaLegacyRpc, type AlphaLegacyRpc } from './alpha-legacy-rpc.js'
 import {
   AlphaRemoteMux,
@@ -720,6 +721,12 @@ export class AlphaLoopbackApiClient implements DshTransport {
       )
         continue
       const controlWireVersion = this.options.controlWireVersion ?? 'queue-v1'
+      if (controlWireVersion === 'projection-v3') {
+        const frames = normalizeRc221ControlFrame(item)
+        if (frames === undefined) throw malformedResponse('session/control rc221 frame')
+        yield* frames
+        continue
+      }
       if (controlWireVersion === 'projection-v2') {
         const frames = normalizeAlpha171ControlFrame(item)
         if (frames === undefined) throw malformedResponse('session/control alpha171 frame')
