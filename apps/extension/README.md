@@ -6,7 +6,10 @@ Develop with DeepSeek Harness in VS Code, with an editor workflow similar to Cod
 
 ## Install and connect
 
-Install **DSH Coding Agent** in VS Code, open a trusted project folder, then open **DSH** in the right side bar. Choose either way to run DSH below.
+1. Search for and install **DSH Coding Agent** in the VS Code Marketplace, ⚠️ **this method is temporarily unavailable and the extension has been delisted**, please wait for it to be relisted.
+2. Download the `.vsix` from GitHub Releases, then install it with **Extensions: Install from VSIX...** in VS Code.
+
+Open and trust a project folder, then expand **DSH** on the right side bar. Choose either of the following ways to use DSH.
 
 ### Option 1: Connect to Desktop and continue shared sessions
 
@@ -27,8 +30,6 @@ npm install --global @deepseek-ai/dsh
 ```
 
 In the extension, open **Settings → Connection source**, select **DSH CLI**, confirm the detected DSH CLI installation or select an executable, then click **Start and connect**. You can also install a specific version under **DSH CLI installation and version** in settings. The extension starts a separate service; use option 1 to continue an existing Desktop session.
-
-If you download a `.vsix` from GitHub Releases, install it with **Extensions: Install from VSIX...** in VS Code.
 
 Chat in the side bar or an editor tab. Available models, tools and advanced features depend on the connected DSH runtime. See [compatibility](https://github.com/mcdottok/vscode-dsh/blob/main/docs/dsh-contract.md) and the [capability matrix](https://github.com/mcdottok/vscode-dsh/blob/main/docs/capability-matrix.md) for scope and limitations, and [support](https://github.com/mcdottok/vscode-dsh/blob/main/apps/extension/SUPPORT.md) for reporting instructions.
 
