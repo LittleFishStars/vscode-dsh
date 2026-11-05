@@ -795,6 +795,94 @@ describe('App connected rendering', () => {
     expect(screen.queryByRole('region', { name: 'Queued prompts' })).toBeNull()
   })
 
+  it('clears a delivered message before a delayed RPC response without losing a new draft', async () => {
+    let state = connectedState(true)
+    const oldUri = 'dsh-attachment:00000000-0000-4000-8000-000000000041'
+    const newUri = 'dsh-attachment:00000000-0000-4000-8000-000000000042'
+    const releaseAttachments = vi.fn().mockResolvedValue(undefined)
+    const listeners = new Set<() => void>()
+    const publish = (next: AppState): void => {
+      state = next
+      for (const listener of listeners) listener()
+    }
+    let rejectReceipt!: (reason: Error) => void
+    const receipt = new Promise<void>((_resolve, reject) => {
+      rejectReceipt = reject
+    })
+    currentStore = {
+      ...storeFor(state),
+      getState: () => state,
+      subscribe: (listener) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+      sendPrompt: vi.fn(() => {
+        publish({ ...state, directPromptRequestIds: ['direct-request'] })
+        return receipt
+      }),
+      pickAttachment: vi
+        .fn()
+        .mockResolvedValueOnce({ uri: oldUri, name: 'old.txt', mimeType: 'text/plain' })
+        .mockResolvedValueOnce({ uri: newUri, name: 'new.txt', mimeType: 'text/plain' }),
+      releaseAttachments,
+    }
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Editor context' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Attach file' }))
+    await screen.findByRole('button', { name: 'Remove old.txt' })
+    const input = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Prompt' })
+    fireEvent.change(input, { target: { value: 'Hello' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(input.value).toBe('Hello')
+    fireEvent.click(screen.getByRole('button', { name: 'Editor context' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Attach file' }))
+    await screen.findByRole('button', { name: 'Remove new.txt' })
+
+    // Identical text from a different request cannot settle this send.
+    act(() =>
+      publish({
+        ...state,
+        timeline: {
+          ...state.timeline,
+          nodes: [{ kind: 'user-message', id: 'other', rpcId: 'other-request', markdown: 'Hello' }],
+        },
+      }),
+    )
+    expect(input.value).toBe('Hello')
+    act(() =>
+      publish({
+        ...state,
+        timeline: {
+          ...state.timeline,
+          nodes: [
+            ...state.timeline.nodes,
+            {
+              kind: 'user-message',
+              id: 'delivered',
+              rpcId: 'direct-request',
+              markdown: 'Hello (expanded reference)',
+            },
+          ],
+        },
+      }),
+    )
+    await waitFor(() => {
+      expect(input.value).toBe('')
+      expect(screen.queryByRole('button', { name: 'Cancel sending' })).toBeNull()
+    })
+    expect(screen.queryByRole('button', { name: 'Remove old.txt' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Remove new.txt' })).toBeTruthy()
+    expect(releaseAttachments).toHaveBeenCalledWith([oldUri])
+
+    fireEvent.change(input, { target: { value: 'A new draft' } })
+    await act(async () => {
+      rejectReceipt(new Error('late receipt lost'))
+      await receipt.catch(() => undefined)
+    })
+    expect(input.value).toBe('A new draft')
+    expect(screen.queryByText(/^Prompt failed\./)).toBeNull()
+  })
+
   it('renders a local draft and routes its first message through deferred creation', async () => {
     const state = connectedState(false)
     const sendPendingPrompt = vi.fn().mockResolvedValue(undefined)

@@ -383,84 +383,160 @@ export function useComposerAttachments(deps: ComposerAttachmentDependencies): Co
     } catch (reason) {
       submission = Promise.reject(reason instanceof Error ? reason : new Error(t('app.error.prompt')))
     }
-    return submission
-      .then(async () => {
-        if (!mountedRef.current || Boolean(signal?.aborted)) return
-        const admitted = store.getState()
-        if (active !== undefined && admitted.activeSessionId !== active.id) return
-        const directRequests = admitted.directPromptRequestIds?.filter((id) => !beforeRequests.has(id)) ?? []
-        if (directRequests.length > 0 && !signal?.aborted) {
-          awaitingVisibility = true
-          // An RPC receipt can precede the durable user message. Keep the
-          // original draft visible until that message reaches the timeline.
-          const sessionId = admitted.activeSessionId
-          await new Promise<void>((resolve, reject) => {
+    // A durable message can reach the timeline before the RPC response. Its
+    // exact request identity proves delivery, so don't leave the same message
+    // in the composer while the Host is still finishing the response. Capture
+    // only an identity registered synchronously by this send; slash-command and
+    // new-session setup may register later and retain their existing path.
+    const directAtDispatch = (store.getState().directPromptRequestIds ?? []).filter(
+      (id) => !beforeRequests.has(id),
+    )
+    const directRequest =
+      active !== undefined && directAtDispatch.length === 1 ? directAtDispatch[0] : undefined
+    let stopEarlyWatch = (): void => undefined
+    const earlyDelivery =
+      directRequest === undefined || active === undefined
+        ? undefined
+        : new Promise<'visible' | 'cancelled'>((resolve) => {
             let unsubscribe = (): void => undefined
             let settled = false
-            const finish = (error?: Error): void => {
+            const finish = (result: 'visible' | 'cancelled'): void => {
               if (settled) return
               settled = true
-              clearTimeout(timer)
               unsubscribe()
               admissionWaitsRef.current.delete(cancelled)
               signal?.removeEventListener('abort', cancelled)
-              if (error === undefined) resolve()
-              else reject(error)
+              resolve(result)
             }
-            const cancelled = (): void => finish(new DOMException('Cancelled', 'AbortError'))
+            const cancelled = (): void => finish('cancelled')
             const check = (): void => {
               const current = store.getState()
-              if (current.activeSessionId !== sessionId || current.backend.kind !== 'connected') {
+              if (
+                !mountedRef.current ||
+                signal?.aborted === true ||
+                current.activeSessionId !== active.id ||
+                current.backend.kind !== 'connected'
+              ) {
                 cancelled()
                 return
               }
               if (
+                current.timeline.sessionId === active.id &&
                 current.timeline.nodes.some(
                   (node) =>
-                    node.kind === 'user-message' &&
-                    ((node.rpcId !== undefined && directRequests.includes(node.rpcId)) ||
-                      (!beforeIds.has(node.id) && node.markdown === text)),
+                    node.kind === 'user-message' && !beforeIds.has(node.id) && node.rpcId === directRequest,
                 )
               )
-                finish()
+                finish('visible')
             }
-            const timer = setTimeout(() => finish(new Error(t('app.error.promptTimeout'))), 30_000)
+            stopEarlyWatch = cancelled
             unsubscribe = store.subscribe(check)
             admissionWaitsRef.current.add(cancelled)
             signal?.addEventListener('abort', cancelled, { once: true })
-            if (signal?.aborted) cancelled()
-            else check()
+            check()
           })
-        }
-        if (!mountedRef.current || Boolean(signal?.aborted)) return
+    const receipt = submission.then(() => 'receipt' as const)
+    return (async () => {
+      let outcome: 'receipt' | 'visible' | 'cancelled'
+      try {
+        outcome = await (earlyDelivery === undefined ? receipt : Promise.race([receipt, earlyDelivery]))
+      } finally {
+        stopEarlyWatch()
+      }
+      if (outcome === 'cancelled') return
+      if (outcome === 'visible') {
+        if (
+          !mountedRef.current ||
+          Boolean(signal?.aborted) ||
+          store.getState().activeSessionId !== active?.id
+        )
+          return
         setDraft((current) => (current === text ? '' : current))
-        // The Extension Host consumes only the handles admitted by this send;
-        // keep any draft attachments the user added while it was in flight.
+        // Delivery already consumed the snapshot. Release its handles even if
+        // the late RPC response fails; the Host release is idempotent.
         removeAttachmentDrafts(
           attachmentSnapshot.map((attachment) => attachment.uri),
-          false,
+          true,
         )
+        const contextRefs = before.editorContext.map((item) => item.ref.contextRef)
+        if (contextRefs.length > 0) void store.releaseEditorContext(contextRefs).catch(() => undefined)
         setOpenFilePickerOpen(false)
-      })
-      .catch((reason: unknown) => {
-        if (Boolean(signal?.aborted) || (reason instanceof DOMException && reason.name === 'AbortError'))
-          return
-        if (!mountedRef.current) return
-        if (awaitingVisibility) {
-          setSubmitError(t('app.error.promptTimeout'))
-          return
-        }
-        // One Session has one writer across DSH instances. Name that condition
-        // instead of forwarding the Host's generic busy text, and keep the
-        // slower hint on every other failure: the user otherwise only sees a
-        // draft that will not leave the composer.
-        if (publicProtocolErrorCode(reason) === 'SESSION_WRITER_HELD')
-          setSubmitError(t('app.error.sessionWriterHeld'))
-        else
-          setSubmitError(
-            `${publicProtocolErrorMessage(reason) ?? t('app.error.prompt')} ${t('app.error.promptOccupiedHint')}`,
-          )
-      })
+        return
+      }
+      if (!mountedRef.current || Boolean(signal?.aborted)) return
+      const admitted = store.getState()
+      if (active !== undefined && admitted.activeSessionId !== active.id) return
+      const directRequests = admitted.directPromptRequestIds?.filter((id) => !beforeRequests.has(id)) ?? []
+      if (directRequests.length > 0 && !signal?.aborted) {
+        awaitingVisibility = true
+        // An RPC receipt can precede the durable user message. Keep the
+        // original draft visible until that message reaches the timeline.
+        const sessionId = admitted.activeSessionId
+        await new Promise<void>((resolve, reject) => {
+          let unsubscribe = (): void => undefined
+          let settled = false
+          const finish = (error?: Error): void => {
+            if (settled) return
+            settled = true
+            clearTimeout(timer)
+            unsubscribe()
+            admissionWaitsRef.current.delete(cancelled)
+            signal?.removeEventListener('abort', cancelled)
+            if (error === undefined) resolve()
+            else reject(error)
+          }
+          const cancelled = (): void => finish(new DOMException('Cancelled', 'AbortError'))
+          const check = (): void => {
+            const current = store.getState()
+            if (current.activeSessionId !== sessionId || current.backend.kind !== 'connected') {
+              cancelled()
+              return
+            }
+            if (
+              current.timeline.nodes.some(
+                (node) =>
+                  node.kind === 'user-message' &&
+                  ((node.rpcId !== undefined && directRequests.includes(node.rpcId)) ||
+                    (!beforeIds.has(node.id) && node.markdown === text)),
+              )
+            )
+              finish()
+          }
+          const timer = setTimeout(() => finish(new Error(t('app.error.promptTimeout'))), 30_000)
+          unsubscribe = store.subscribe(check)
+          admissionWaitsRef.current.add(cancelled)
+          signal?.addEventListener('abort', cancelled, { once: true })
+          if (signal?.aborted) cancelled()
+          else check()
+        })
+      }
+      if (!mountedRef.current || Boolean(signal?.aborted)) return
+      setDraft((current) => (current === text ? '' : current))
+      // The Extension Host consumes only the handles admitted by this send;
+      // keep any draft attachments the user added while it was in flight.
+      removeAttachmentDrafts(
+        attachmentSnapshot.map((attachment) => attachment.uri),
+        false,
+      )
+      setOpenFilePickerOpen(false)
+    })().catch((reason: unknown) => {
+      if (Boolean(signal?.aborted) || (reason instanceof DOMException && reason.name === 'AbortError')) return
+      if (!mountedRef.current) return
+      if (awaitingVisibility) {
+        setSubmitError(t('app.error.promptTimeout'))
+        return
+      }
+      // One Session has one writer across DSH instances. Name that condition
+      // instead of forwarding the Host's generic busy text, and keep the
+      // slower hint on every other failure: the user otherwise only sees a
+      // draft that will not leave the composer.
+      if (publicProtocolErrorCode(reason) === 'SESSION_WRITER_HELD')
+        setSubmitError(t('app.error.sessionWriterHeld'))
+      else
+        setSubmitError(
+          `${publicProtocolErrorMessage(reason) ?? t('app.error.prompt')} ${t('app.error.promptOccupiedHint')}`,
+        )
+    })
   }
   /**
    * Loads the open-file snapshot that both the composer menu row and the
