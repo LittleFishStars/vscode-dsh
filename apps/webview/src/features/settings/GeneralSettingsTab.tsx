@@ -71,6 +71,7 @@ export function GeneralSettingsTab(input: GeneralSettingsTabProps): ReactElement
   const {
     props,
     t,
+    settingsState,
 
     refreshAccountDetails,
     acknowledgeAccountBonus,
@@ -131,6 +132,23 @@ export function GeneralSettingsTab(input: GeneralSettingsTabProps): ReactElement
           />
         </>
       ) : null}
+      <SettingCard ariaLabel={t('settings.extensionVersion')}>
+        <SettingRow
+          title={t('settings.extensionVersion')}
+          status={settingsState?.value?.extensionVersion ?? t('settings.unavailable')}
+          description={t('settings.extensionUpdateHint')}
+          control={
+            <a
+              className="dsh-button dsh-button--secondary dsh-button--compact dsh-settings__release-link"
+              href="https://github.com/mcdottok/vscode-dsh/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('settings.extensionCheckUpdates')}
+            </a>
+          }
+        />
+      </SettingCard>
       <SettingCard ariaLabel={t('settings.extensionPreferences')}>
         <SettingRow
           title={t('settings.language.label')}
