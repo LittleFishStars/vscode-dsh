@@ -214,7 +214,7 @@ export function createCommandsAssembly(deps: CommandsAssemblyDependencies): Comm
       // touched — leaving the menu enabled over an emptied store.
       editorContextProvider.dispose()
       void postEditorContextAvailabilityEvent()
-      void postEvent('workspace.changed', {})
+      void postEvent('workspace.changed', { workspaceFoldersChanged: true })
     }),
     vscode.window.onDidChangeActiveTextEditor(() => {
       automaticSelection.schedule()

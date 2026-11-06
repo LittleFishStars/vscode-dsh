@@ -154,6 +154,14 @@ class HostClient {
 
   private answer(request: WebviewRequest): unknown {
     switch (request.type) {
+      case 'session.create':
+        this.emit({
+          type: 'event',
+          name: 'workspace.changed',
+          sequence: 1,
+          payload: { workspaceId: WORKSPACE_FOLDER_ID },
+        })
+        return { id: 'created' }
       case 'command.execute': {
         this.executedCommands.push(request.payload.command)
         return { kind: 'success' }
@@ -208,6 +216,47 @@ function refs(store: ReturnType<typeof createAppStore>): readonly string[] {
 }
 
 describe('AppStore editor-context admission', () => {
+  it('keeps draft context on catalog updates and releases it on VS Code folder changes', async () => {
+    const { client, store } = open()
+    try {
+      await store.refreshSessions()
+      await store.stageSession(WORKSPACE_FOLDER_ID)
+      await store.captureEditorContext('selection')
+      client.emit({ type: 'event', name: 'workspace.changed', sequence: 1, payload: {} })
+      await settle()
+      expect(refs(store)).toEqual(['context-1'])
+      expect(client.releasedContextRefs).toEqual([])
+
+      client.emit({
+        type: 'event',
+        name: 'workspace.changed',
+        sequence: 2,
+        payload: { workspaceFoldersChanged: true },
+      })
+      await vi.waitFor(() => expect(refs(store)).toEqual([]))
+      expect(client.releasedContextRefs).toEqual([['context-1']])
+    } finally {
+      store.dispose()
+    }
+  })
+
+  it('includes a draft selection in the first prompt of a new session', async () => {
+    const { client, store } = open()
+    try {
+      await store.refreshSessions()
+      await store.stageSession(WORKSPACE_FOLDER_ID)
+      await store.captureEditorContext('selection')
+      expect(refs(store)).toEqual(['context-1'])
+
+      await store.sendPendingPrompt('this', [], 'queue')
+
+      expect(client.sentContextRefs).toEqual([['context-1']])
+      expect(client.releasedContextRefs).toEqual([])
+    } finally {
+      store.dispose()
+    }
+  })
+
   it('returns a draft selection to its original editor range without fetching a preview', async () => {
     const { client, store } = open()
     try {

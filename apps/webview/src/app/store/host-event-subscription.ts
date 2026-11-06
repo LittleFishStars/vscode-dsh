@@ -297,7 +297,11 @@ export function subscribeHostEvents(deps: HostEventSubscriptionDependencies): ()
     }
     if (
       message.type === 'event' &&
-      (message.name === 'workspace.changed' || message.name === 'workspace.removed')
+      // DSH also publishes workspace.changed when a new session is added to
+      // its catalog. Only a VS Code folder change invalidates captured paths;
+      // clearing on every catalog update drops context before the first send.
+      ((message.name === 'workspace.changed' && object(message.payload)?.workspaceFoldersChanged === true) ||
+        message.name === 'workspace.removed')
     )
       void featureActions.discardEditorContextForWorkspaceChange()
     if (
