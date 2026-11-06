@@ -46,6 +46,8 @@ npm install --global @deepseek-ai/dsh
 
 开发历程和版本变更见[更新日志](CHANGELOG.md)。
 
+尚未实现的方案见[后续计划](ROADMAP.md)。
+
 ## 功能预览
 
 ### 结合代码上下文提问

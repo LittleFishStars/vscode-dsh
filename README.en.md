@@ -46,6 +46,8 @@ See [build instructions](BUILD.md), [contributing](CONTRIBUTING.md) and [develop
 
 See the [changelog](CHANGELOG.md) for this fork’s development history and version changes.
 
+See the [roadmap](ROADMAP.md) for planned features that are not implemented yet.
+
 ## Feature preview
 
 ### Ask about selected code
