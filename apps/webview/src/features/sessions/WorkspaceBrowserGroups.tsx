@@ -206,13 +206,14 @@ export function WorkspaceBrowserGroups(props: {
                   matches.map((session) => (
                     <button
                       className="dsh-workspace-browser__row"
+                      data-archived={session.archived}
                       key={session.id}
                       type="button"
                       onClick={() => setPreview({ project, session })}
                     >
-                      <Icon name="clock" />
+                      <Icon name={session.archived ? 'box' : 'clock'} />
                       <span>{session.title}</span>
-                      <small>{t('sessions.browser.preview')}</small>
+                      <small>{t(session.archived ? 'sessions.archived' : 'sessions.browser.preview')}</small>
                     </button>
                   ))
                 )}

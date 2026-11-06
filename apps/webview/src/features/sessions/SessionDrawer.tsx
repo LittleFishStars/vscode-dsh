@@ -329,6 +329,13 @@ export const SessionDrawer = memo(function SessionDrawer(props: SessionDrawerPro
   }
 
   const archiveSession = (session: SessionSummary): void => {
+    if (
+      archivedSessionIds.has(session.id) ||
+      removingSessionId !== undefined ||
+      restoringSessionId !== undefined ||
+      mutationBusy
+    )
+      return
     setArchiveError(undefined)
     setRemovingSessionId(session.id)
     void props
@@ -346,6 +353,13 @@ export const SessionDrawer = memo(function SessionDrawer(props: SessionDrawerPro
    * even though nothing was written.
    */
   const restoreArchivedSession = (session: SessionSummary): void => {
+    if (
+      props.canRestoreSessions !== true ||
+      removingSessionId !== undefined ||
+      restoringSessionId !== undefined ||
+      mutationBusy
+    )
+      return
     setArchivedError(undefined)
     setRestoringSessionId(session.id)
     void props
@@ -446,17 +460,20 @@ export const SessionDrawer = memo(function SessionDrawer(props: SessionDrawerPro
     <SessionRow
       key={session.id}
       session={session}
-      active={session.id === props.activeSessionId}
+      active={!archivedSessionIds.has(session.id) && session.id === props.activeSessionId}
+      archived={archivedSessionIds.has(session.id)}
+      canRestore={props.canRestoreSessions === true}
       {...(workspaceName === undefined ? {} : { workspaceName })}
       {...(reorderWorkspaceId === undefined ? {} : { reorderWorkspaceId })}
       {...(props.permissions === undefined ? {} : { permissions: props.permissions })}
       {...(props.questions === undefined ? {} : { questions: props.questions })}
-      removing={removingSessionId === session.id}
-      disabled={removingSessionId !== undefined || mutationBusy}
+      removing={removingSessionId === session.id || restoringSessionId === session.id}
+      disabled={removingSessionId !== undefined || restoringSessionId !== undefined || mutationBusy}
       sorting={sorting}
       onOpen={openSession}
       {...(props.onOpenInEditor === undefined ? {} : { onOpenInEditor: openSessionInEditor })}
       onArchive={archiveSession}
+      onRestore={restoreArchivedSession}
       onRename={(target, trigger) => {
         dialogTriggerRef.current = trigger
         startRename({
@@ -676,6 +693,11 @@ export const SessionDrawer = memo(function SessionDrawer(props: SessionDrawerPro
               {archiveError}
             </p>
           )}
+          {archivedError === undefined ? null : (
+            <p className="dsh-session-switcher__error" role="alert">
+              {archivedError}
+            </p>
+          )}
           {moveError === undefined ? null : (
             <p className="dsh-session-switcher__error" role="alert">
               {moveError}
@@ -788,11 +810,6 @@ export const SessionDrawer = memo(function SessionDrawer(props: SessionDrawerPro
                 </button>
                 {archivedOpen ? (
                   <div className="dsh-session-switcher__archived-body">
-                    {archivedError === undefined ? null : (
-                      <p className="dsh-session-switcher__error" role="alert">
-                        {archivedError}
-                      </p>
-                    )}
                     {archivedLoading ? (
                       <p className="dsh-session-switcher__empty">{t('sessions.archivedLoading')}</p>
                     ) : filteredArchivedSessions.length === 0 ? (
@@ -800,62 +817,12 @@ export const SessionDrawer = memo(function SessionDrawer(props: SessionDrawerPro
                     ) : (
                       <ul className="dsh-session-switcher__list" aria-label={t('sessions.archived')}>
                         {filteredArchivedSessions.map((session) => {
-                          const title = displaySessionTitle(session.title, t)
                           const workspace = props.workspaces.find(
                             (candidate) => candidate.id === session.workspaceId,
                           )
                           const workspaceName =
                             workspace === undefined ? undefined : displayWorkspaceName(workspace.name)
-                          return (
-                            <li
-                              key={session.id}
-                              className="dsh-session-item"
-                              aria-busy={restoringSessionId === session.id}
-                            >
-                              <span className="dsh-session-item__copy">
-                                <strong title={title}>{title}</strong>
-                                {workspaceName === undefined ? null : (
-                                  <span className="dsh-session-item__workspace" title={workspaceName}>
-                                    {workspaceName}
-                                  </span>
-                                )}
-                              </span>
-                              <div className="dsh-session-item__actions">
-                                <button
-                                  className="dsh-icon-button"
-                                  type="button"
-                                  aria-label={t('sessions.restore', { title })}
-                                  title={t(
-                                    props.canRestoreSessions === true
-                                      ? 'sessions.restoreTitle'
-                                      : 'sessions.restoreUnavailable',
-                                  )}
-                                  disabled={
-                                    props.canRestoreSessions !== true ||
-                                    mutationBusy ||
-                                    restoringSessionId !== undefined
-                                  }
-                                  onClick={() => restoreArchivedSession(session)}
-                                >
-                                  <Icon name="refresh" />
-                                </button>
-                                <button
-                                  className="dsh-icon-button"
-                                  type="button"
-                                  aria-label={t('sessions.delete', { title })}
-                                  title={t('sessions.deleteUnavailable')}
-                                  disabled
-                                  onClick={(event) => {
-                                    dialogTriggerRef.current = event.currentTarget
-                                    setDeleteError(undefined)
-                                    setDeleteTarget(session)
-                                  }}
-                                >
-                                  <Icon name="trash" />
-                                </button>
-                              </div>
-                            </li>
-                          )
+                          return renderSessionRow(session, workspaceName)
                         })}
                       </ul>
                     )}

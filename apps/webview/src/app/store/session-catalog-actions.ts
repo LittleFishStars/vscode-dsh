@@ -175,6 +175,7 @@ export function createSessionCatalogActions(host: SessionCatalogActionHost): Ses
       })
     },
     removeSession: async (sessionId) => {
+      const sessionToArchive = getState().sessions.find((session) => session.id === sessionId)
       const wasActive = getState().activeSessionId === sessionId
       const navigationIntent = host.currentOpenIntent()
       await client.request<unknown>({
@@ -182,18 +183,26 @@ export function createSessionCatalogActions(host: SessionCatalogActionHost): Ses
         requestId: requestId(),
         payload: { sessionId, archived: true },
       })
+      // An archive event can refresh the normal list before the RPC answers.
+      // Retain its summary so the acknowledged row can move into the archive
+      // immediately, even if that event already removed it from the live list.
+      const archivedSession =
+        getState().sessions.find((session) => session.id === sessionId) ?? sessionToArchive
       host.handleRegistryEvent({
         type: 'archived.sessions.changed',
         sessionIds: uniqueStrings([...getState().archivedSessionIds, sessionId]),
       })
-      // Archive is a registry operation, not a destructive delete. Remove it
-      // from the visible switcher immediately; the follow-up list refresh is
-      // deliberately kept as a reconciliation step for other sessions.
+      // Move the acknowledged row between both cached lists. The archive is
+      // only fetched on demand, so refreshing the normal list cannot populate
+      // it while the "all conversations" surface stays open.
       setState((current) => ({
         ...current,
         archivedSessionIds: uniqueStrings([...current.archivedSessionIds, sessionId]),
         sessions: current.sessions.filter((session) => session.id !== sessionId),
-        archivedSessions: current.archivedSessions.filter((session) => session.id !== sessionId),
+        archivedSessions:
+          archivedSession === undefined
+            ? current.archivedSessions
+            : [archivedSession, ...current.archivedSessions.filter((session) => session.id !== sessionId)],
         ...(current.activeSessionId === sessionId ? clearedActiveSession(current, sessionId) : {}),
       }))
       await refresh()

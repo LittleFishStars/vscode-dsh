@@ -364,19 +364,19 @@ describe('SessionDrawer', () => {
     expect(screen.getByText('Fix login bug', { exact: true })).toBeDefined()
 
     chooseArchiveFilter('all')
-    expect(await screen.findByRole('button', { name: 'Restore session Archived chat' })).toBeDefined()
+    expect(await screen.findByRole('button', { name: 'Unarchive session Archived chat' })).toBeDefined()
     expect(screen.getByText('Fix login bug', { exact: true })).toBeDefined()
     expect(onLoadArchived).toHaveBeenCalled()
 
     chooseArchiveFilter('archived')
-    expect(await screen.findByRole('button', { name: 'Restore session Archived chat' })).toBeDefined()
+    expect(await screen.findByRole('button', { name: 'Unarchive session Archived chat' })).toBeDefined()
     expect(screen.queryByText('Fix login bug', { exact: true })).toBeNull()
     const workspaceList = screen.getByLabelText('Workspaces')
     expect(within(workspaceList).getByText('Alpha')).toBeDefined()
     expect(within(workspaceList).queryByText('Beta')).toBeNull()
 
     chooseArchiveFilter('hide')
-    expect(screen.queryByRole('button', { name: 'Restore session Archived chat' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Unarchive session Archived chat' })).toBeNull()
     expect(screen.getByText('Fix login bug', { exact: true })).toBeDefined()
   })
 
@@ -395,8 +395,8 @@ describe('SessionDrawer', () => {
       target: { value: 'report' },
     })
 
-    expect(await screen.findByRole('button', { name: 'Restore session Older report' })).toBeDefined()
-    expect(screen.queryByRole('button', { name: 'Restore session Archived chat' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Unarchive session Older report' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Unarchive session Archived chat' })).toBeNull()
     await new Promise((resolve) => window.setTimeout(resolve, 300))
     expect(onSearch).not.toHaveBeenCalled()
     expect(screen.queryByText('Content search is unavailable')).toBeNull()
@@ -972,7 +972,7 @@ it.each([false, true])('gates archived restore on advertised support: %s', async
     archivedSessions: [session({ id: 'old', title: 'Archived chat' })],
   })
   chooseArchiveFilter('all')
-  const button = await screen.findByRole('button', { name: 'Restore session Archived chat' })
+  const button = await screen.findByRole('button', { name: 'Unarchive session Archived chat' })
   expect((button as HTMLButtonElement).disabled).toBe(!canRestoreSessions)
   fireEvent.click(button)
   expect(onRestore).toHaveBeenCalledTimes(canRestoreSessions ? 1 : 0)
@@ -1021,8 +1021,85 @@ describe('session archive failures', () => {
     })
 
     chooseArchiveFilter('all')
-    fireEvent.click(await screen.findByRole('button', { name: 'Restore session Archived chat' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unarchive session Archived chat' }))
 
     expect((await screen.findByRole('alert')).textContent).toContain('The restore RPC failed.')
+  })
+})
+
+describe('archived rows in the current workspace browser', () => {
+  it.each(['all', 'archived'] as const)(
+    'unarchives instead of archiving with the %s filter',
+    async (filter) => {
+      const onArchive = vi.fn().mockResolvedValue(undefined)
+      const onRestore = vi.fn().mockResolvedValue(undefined)
+      const onOpen = vi.fn()
+      const onOpenInEditor = vi.fn()
+      renderDrawer({
+        browseWorkspaces: vi.fn().mockResolvedValue({ items: [] }),
+        canRestoreSessions: true,
+        archivedSessions: [session({ id: 'old', title: 'Archived chat' })],
+        onArchive,
+        onRestore,
+        onOpen,
+        onOpenInEditor,
+      })
+
+      chooseArchiveFilter(filter)
+      const restore = await screen.findByRole('button', { name: 'Unarchive session Archived chat' })
+      const row = restore.closest('li')
+      if (row === null) throw new Error('Archived conversation row is missing.')
+      expect(row.dataset.archived).toBe('true')
+      expect(within(row).getByText('Archived', { exact: true })).toBeDefined()
+      expect(row.draggable).toBe(false)
+      expect(screen.queryByRole('button', { name: 'Archive session Archived chat' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Rename session Archived chat' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Open Archived chat in the editor area' })).toBeNull()
+      fireEvent.click(within(row).getByTitle('Unarchive to continue this conversation.'))
+      expect(onOpen).not.toHaveBeenCalled()
+      expect(onOpenInEditor).not.toHaveBeenCalled()
+
+      fireEvent.click(restore)
+      await waitFor(() => expect(onRestore).toHaveBeenCalledWith('old'))
+      expect(onArchive).not.toHaveBeenCalled()
+      if (filter === 'all') {
+        const normal = screen.getByTitle('Fix login bug').closest('li')
+        expect(normal?.dataset.archived).toBe('false')
+        expect(screen.getByRole('button', { name: 'Archive session Fix login bug' })).toBeDefined()
+      }
+    },
+  )
+
+  it('locks row actions during unarchive and shows a refused request with a retry', async () => {
+    let rejectRestore!: (reason: Error) => void
+    const pending = new Promise<void>((_resolve, reject) => {
+      rejectRestore = reject
+    })
+    const onRestore = vi.fn().mockReturnValueOnce(pending).mockResolvedValue(undefined)
+    const onArchive = vi.fn().mockResolvedValue(undefined)
+    renderDrawer({
+      browseWorkspaces: vi.fn().mockResolvedValue({ items: [] }),
+      canRestoreSessions: true,
+      archivedSessions: [session({ id: 'old', title: 'Archived chat' })],
+      onRestore,
+      onArchive,
+    })
+    chooseArchiveFilter('all')
+    const restore = await screen.findByRole('button', { name: 'Unarchive session Archived chat' })
+    fireEvent.click(restore)
+    expect(restore.hasAttribute('disabled')).toBe(true)
+    const archive = screen.getByRole('button', { name: 'Archive session Fix login bug' })
+    expect(archive.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(restore)
+    fireEvent.click(archive)
+    expect(onRestore).toHaveBeenCalledTimes(1)
+    expect(onArchive).not.toHaveBeenCalled()
+
+    rejectRestore(new Error('Unarchive request refused.'))
+    expect((await screen.findByRole('alert')).textContent).toContain('Unarchive request refused.')
+    await waitFor(() => expect(restore.hasAttribute('disabled')).toBe(false))
+    fireEvent.click(restore)
+    await waitFor(() => expect(onRestore).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

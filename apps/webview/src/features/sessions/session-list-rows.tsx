@@ -22,6 +22,8 @@ import { displaySessionTitle } from './session-title.js'
 export interface SessionRowProps {
   readonly session: SessionSummary
   readonly active: boolean
+  readonly archived: boolean
+  readonly canRestore: boolean
   readonly workspaceName?: string
   readonly reorderWorkspaceId?: string
   readonly permissions?: readonly PermissionRequest[]
@@ -35,6 +37,7 @@ export interface SessionRowProps {
   /** Absent when the surface cannot host an editor tab (no such action shown). */
   readonly onOpenInEditor?: (session: SessionSummary) => void
   readonly onArchive: (session: SessionSummary) => void
+  readonly onRestore: (session: SessionSummary) => void
   readonly onRename: (session: SessionSummary, trigger: HTMLElement) => void
   readonly onMove: (workspaceId: string, sessionId: string, beforeSessionId: string) => void
 }
@@ -42,6 +45,8 @@ export interface SessionRowProps {
 export function SessionRow({
   session,
   active,
+  archived,
+  canRestore,
   workspaceName,
   reorderWorkspaceId,
   permissions,
@@ -52,6 +57,7 @@ export function SessionRow({
   onOpen,
   onOpenInEditor,
   onArchive,
+  onRestore,
   onRename,
   onMove,
 }: SessionRowProps): ReactElement {
@@ -66,11 +72,11 @@ export function SessionRow({
       : questions?.some((question) => question.sessionId === session.id)
         ? 'answer'
         : undefined
-  const statusLabel = t(
-    waiting === undefined ? `sessions.status.${session.status}` : `sessions.waiting.${waiting}`,
-  )
-  const canReorder = sorting === 'manual' && reorderWorkspaceId !== undefined
-  const canOpenInEditor = onOpenInEditor !== undefined
+  const statusLabel = archived
+    ? t('sessions.archived')
+    : t(waiting === undefined ? `sessions.status.${session.status}` : `sessions.waiting.${waiting}`)
+  const canReorder = !archived && sorting === 'manual' && reorderWorkspaceId !== undefined
+  const canOpenInEditor = !archived && onOpenInEditor !== undefined
   const dragHint = canOpenInEditor
     ? canReorder
       ? `${t('sessions.dragSession')} · ${t('sessions.dragToEditor')}`
@@ -81,6 +87,7 @@ export function SessionRow({
   return (
     <li
       aria-busy={removing}
+      data-archived={archived}
       draggable={!disabled && (canReorder || canOpenInEditor)}
       title={dragHint}
       onDragStart={(event) => {
@@ -124,22 +131,30 @@ export function SessionRow({
     >
       <button
         className={`dsh-session-item__button${active ? ' dsh-session-item__button--active' : ''}`}
-        data-session-status={waiting ?? session.status}
+        data-session-status={archived ? 'archived' : (waiting ?? session.status)}
         type="button"
         aria-current={active ? 'page' : undefined}
-        disabled={disabled}
+        disabled={disabled || archived}
+        title={archived ? t('sessions.restoreBeforeOpen') : undefined}
         onClick={() => onOpen(session)}
       >
         <span
-          className={`dsh-session-item__icon dsh-session-item__icon--${session.status}`}
+          className={`dsh-session-item__icon dsh-session-item__icon--${archived ? 'archived' : session.status}`}
           role="img"
           aria-label={statusLabel}
           title={statusLabel}
         >
-          <Icon name={waiting === undefined ? sessionStatusIcon(session.status) : 'alert'} />
+          <Icon
+            name={archived ? 'box' : waiting === undefined ? sessionStatusIcon(session.status) : 'alert'}
+          />
         </span>
         <span className="dsh-session-item__copy">
-          <strong title={title}>{title}</strong>
+          <span className="dsh-session-item__heading">
+            {archived ? (
+              <small className="dsh-session-item__archive-badge">{t('sessions.archived')}</small>
+            ) : null}
+            <strong title={title}>{title}</strong>
+          </span>
           {session.formatStatus === 'migration-required' ? (
             <span>{t('sessions.migrationRequired')}</span>
           ) : null}
@@ -149,16 +164,18 @@ export function SessionRow({
             </span>
           )}
         </span>
-        <span
-          className={`dsh-status-pill dsh-session-item__status dsh-session-item__status--${waiting === undefined ? sessionStatusTone(session.status) : 'amber'}`}
-          title={statusLabel}
-        >
-          <span className="dsh-session-item__status-dot" aria-hidden="true" />
-          <span className="dsh-session-item__status-label">{statusLabel}</span>
-        </span>
+        {archived ? null : (
+          <span
+            className={`dsh-status-pill dsh-session-item__status dsh-session-item__status--${waiting === undefined ? sessionStatusTone(session.status) : 'amber'}`}
+            title={statusLabel}
+          >
+            <span className="dsh-session-item__status-dot" aria-hidden="true" />
+            <span className="dsh-session-item__status-label">{statusLabel}</span>
+          </span>
+        )}
       </button>
       <div className="dsh-session-item__actions">
-        {onOpenInEditor === undefined ? null : (
+        {archived || onOpenInEditor === undefined ? null : (
           <button
             className="dsh-icon-button dsh-session-item__open-in-editor"
             type="button"
@@ -170,26 +187,34 @@ export function SessionRow({
             <Icon name="open-in-editor" />
           </button>
         )}
-        <button
-          className="dsh-icon-button dsh-session-item__rename"
-          type="button"
-          aria-label={t('sessions.rename', { title })}
-          title={t('sessions.renameTitle')}
-          disabled={disabled}
-          onClick={(event) => onRename(session, event.currentTarget)}
-        >
-          <Icon name="edit" />
-        </button>
-        {session.blank ? null : (
+        {archived ? null : (
+          <button
+            className="dsh-icon-button dsh-session-item__rename"
+            type="button"
+            aria-label={t('sessions.rename', { title })}
+            title={t('sessions.renameTitle')}
+            disabled={disabled}
+            onClick={(event) => onRename(session, event.currentTarget)}
+          >
+            <Icon name="edit" />
+          </button>
+        )}
+        {session.blank && !archived ? null : (
           <button
             className="dsh-icon-button dsh-session-item__remove"
             type="button"
-            aria-label={t('sessions.archive', { title })}
-            title={t('sessions.archiveTitle')}
-            disabled={disabled}
-            onClick={() => onArchive(session)}
+            aria-label={t(archived ? 'sessions.restore' : 'sessions.archive', { title })}
+            title={t(
+              archived
+                ? canRestore
+                  ? 'sessions.restoreTitle'
+                  : 'sessions.restoreUnavailable'
+                : 'sessions.archiveTitle',
+            )}
+            disabled={disabled || (archived && !canRestore)}
+            onClick={() => (archived ? onRestore(session) : onArchive(session))}
           >
-            <Icon name="box" />
+            <Icon name={archived ? 'refresh' : 'box'} />
           </button>
         )}
       </div>

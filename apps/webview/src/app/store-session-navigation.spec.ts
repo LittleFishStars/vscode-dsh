@@ -28,6 +28,67 @@ function session(id: string): Record<string, unknown> {
 }
 
 describe('session removal navigation', () => {
+  it('moves an acknowledged archive into the cached archive list before a slow directory refresh', async () => {
+    const acknowledgement = deferred<void>()
+    const refreshStarted = deferred<void>()
+    const refreshResult = deferred<void>()
+    let archiving = false
+    let archiveReads = 0
+    const client = {
+      subscribe: () => () => {},
+      dispose: () => {},
+      request: async (request: WebviewRequest): Promise<unknown> => {
+        if (request.type === 'session.archive') {
+          await acknowledgement.promise
+          archiving = true
+          return {}
+        }
+        if (request.type === 'session.list') {
+          if (request.payload?.archived === true) {
+            archiveReads += 1
+            return { items: [session('already-archived')] }
+          }
+          if (archiving) {
+            refreshStarted.resolve()
+            await refreshResult.promise
+          }
+          // The normal list may still contain the just-archived row until
+          // DSH publishes its archive echo. It must not reappear as normal.
+          return { items: [session('to-archive'), session('other')] }
+        }
+        if (request.type === 'workspace.list') return { items: [] }
+        return []
+      },
+    }
+    const store = createAppStore(client as unknown as ProtocolClient)
+    try {
+      await store.refreshSessions()
+      await store.loadArchivedSessions()
+      const archivingSession = store.removeSession('to-archive')
+      expect(store.sessions.map((entry) => entry.id)).toContain('to-archive')
+      expect(store.getState().archivedSessions.map((entry) => entry.id)).toEqual(['already-archived'])
+
+      acknowledgement.resolve()
+      await refreshStarted.promise
+      expect(store.sessions.map((entry) => entry.id)).toEqual(['other'])
+      expect(store.getState().archivedSessions.map((entry) => entry.id)).toEqual([
+        'to-archive',
+        'already-archived',
+      ])
+
+      refreshResult.resolve()
+      await archivingSession
+      expect(store.sessions.map((entry) => entry.id)).toEqual(['other'])
+      expect(store.getState().archivedSessions.map((entry) => entry.id)).toEqual([
+        'to-archive',
+        'already-archived',
+      ])
+      expect(archiveReads).toBe(1)
+    } finally {
+      store.dispose()
+    }
+  })
+
   it.each(['removeSession', 'deleteSession'] as const)(
     '%s preserves a newer session selection',
     async (operation) => {

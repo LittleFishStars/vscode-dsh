@@ -615,6 +615,47 @@
   color: var(--dsh-muted);
 }
 
+/* An archive is a registry state, independent of the last turn's status.
+ * Keep its label visible even where compact layouts hide ordinary status pills. */
+.dsh-session-switcher__list > li[data-archived='true'] .dsh-session-item__button {
+  color: var(--dsh-muted);
+  opacity: 1;
+}
+
+.dsh-session-switcher__list .dsh-session-item__archive-badge {
+  display: inline-block;
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: var(--dsh-radius-sm);
+  color: var(--dsh-info);
+  font-size: var(--dsh-font-size-2xs);
+  line-height: 1.4;
+}
+
+.dsh-session-switcher__list .dsh-session-item__heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--dsh-space-2);
+}
+
+.dsh-session-switcher__list > li[data-archived='true'] .dsh-session-item__heading strong {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsh-session-item__icon--archived,
+.dsh-workspace-browser__row[data-archived='true'] {
+  color: var(--dsh-muted);
+}
+
+.dsh-workspace-browser__row[data-archived='true'] small {
+  color: var(--dsh-info);
+}
+
 .dsh-session-item__icon {
   display: grid;
   width: var(--dsh-icon-size);
